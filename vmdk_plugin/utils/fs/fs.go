@@ -21,8 +21,6 @@ package fs
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"golang.org/x/exp/inotify"
 	"io"
 	"io/ioutil"
 	"os"
@@ -31,18 +29,21 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"golang.org/x/exp/inotify"
 )
 
 const (
-	sysPciDevs      = "/sys/bus/pci/devices"   // All PCI devices on the host
-	sysPciSlots     = "/sys/bus/pci/slots"     // PCI slots on the host
-	pciAddrLen      = 10                       // Length of PCI dev addr
-	diskPathByDevID = "/dev/disk/by-id/wwn-0x" // Path for devices named by ID
-	scsiHostPath    = "/sys/class/scsi_host/"  // Path for scsi hosts
-	devWaitTimeout  = 10 * time.Second         // give it plenty of time to sense the attached disk
-	bdevPath        = "/sys/block/"
-	deleteFile      = "/device/delete"
-	watchPath       = "/dev/disk/by-id"
+	sysPciDevs        = "/sys/bus/pci/devices"   // All PCI devices on the host
+	sysPciSlots       = "/sys/bus/pci/slots"     // PCI slots on the host
+	pciAddrLen        = 10                       // Length of PCI dev addr
+	diskPathByDevID   = "/dev/disk/by-id/wwn-0x" // Path for devices named by ID
+	scsiHostPath      = "/sys/class/scsi_host/"  // Path for scsi hosts
+	devTimeoutDefault = 20 * time.Second         // DEFAULT timeout to sense the attach to /dev. Settable via env, var (see below)
+	bdevPath          = "/sys/block/"
+	deleteFile        = "/device/delete"
+	watchPath         = "/dev/disk/by-id"
 )
 
 // FstypeDefault contains the default FS when not specified by the user
@@ -80,6 +81,14 @@ func DevAttachWaitPrep(name string, devPath string) (*inotify.Watcher, bool) {
 
 // DevAttachWait waits for attach operation to be completed
 func DevAttachWait(watcher *inotify.Watcher, name string, device string) {
+
+	waitTimeout, err := time.ParseDuration(os.Getenv("VDVS_ATTACH_WAIT"))
+	if err != nil || waitTimeout == 0 {
+		waitTimeout = devTimeoutDefault // no environment or wrong value, fail back to default
+	} else {
+		log.WithFields(log.Fields{"custom_timeout": waitTimeout}).Info("Waiting for attach: ")
+	}
+
 loop:
 	for {
 		select {
@@ -97,9 +106,9 @@ loop:
 				log.Fields{"device": device, "error": err},
 			).Error("Hit error during watch ")
 			break loop
-		case <-time.After(devWaitTimeout):
+		case <-time.After(waitTimeout):
 			log.WithFields(
-				log.Fields{"timeout": devWaitTimeout, "device": device},
+				log.Fields{"timeout": devTimeoutDefault, "device": device},
 			).Warning("Exceeded timeout while waiting for device attach to complete")
 			break loop
 		}

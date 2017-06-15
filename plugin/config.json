@@ -59,6 +59,12 @@
       "description": "Client protocol version used in test",
       "value": "",
       "Settable": [ "value"]
+	},
+		{
+      "name": "VDVS_ATTACH_WAIT",
+      "description": "Wait time for /dev to show up after disk attach, in golang Duration format (e.g. '30s')",
+      "value": "",
+      "Settable": [ "value"]
 	}
 	]
 }
