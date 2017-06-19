@@ -44,9 +44,7 @@
 	},
 	"Linux": {
 		"AllowAllDevices": true,
-		"Capabilities": ["CAP_SYS_ADMIN"],
-		"Devices": null
-
+		"Capabilities": ["CAP_SYS_ADMIN"]
 	},
 	"Env": [ {
       "name": "VDVS_LOG_LEVEL",
