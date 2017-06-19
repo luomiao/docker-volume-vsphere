@@ -67,6 +67,14 @@ func DevAttachWaitPrep(name string, devPath string) (*inotify.Watcher, bool) {
 		return nil, true
 	}
 
+	cmd := exec.Command("ls", "-lR", devPath)
+	out, err1 := cmd.CombinedOutput()
+	if err1 != nil {
+		log.Debugf("Failed to enumerate  files in %s (err: %s)", devPath, err1.Error())
+	} else {
+		log.Debugf("Before inotify watch on %s - list of files: \n%s\n", devPath, out)
+	}
+
 	err := watcher.Watch(devPath)
 
 	if err != nil {
@@ -76,6 +84,7 @@ func DevAttachWaitPrep(name string, devPath string) (*inotify.Watcher, bool) {
 		return nil, true
 	}
 
+	log.Debugf("Started inotify watcher on %s", devPath)
 	return watcher, false
 }
 
@@ -93,7 +102,7 @@ loop:
 	for {
 		select {
 		case ev := <-watcher.Event:
-			log.Debug("event: ", ev)
+			log.Debug("inotify watcher event: ", ev)
 			if ev.Name == device {
 				// Log when the device is discovered
 				log.WithFields(
@@ -104,7 +113,7 @@ loop:
 		case err := <-watcher.Error:
 			log.WithFields(
 				log.Fields{"device": device, "error": err},
-			).Error("Hit error during watch ")
+			).Error("Error during inotify watch ")
 			break loop
 		case <-time.After(waitTimeout):
 			log.WithFields(
@@ -114,6 +123,16 @@ loop:
 		}
 	}
 	watcher.Close()
+
+	path := filepath.Dir(device)
+	cmd := exec.Command("ls", "-lR", path)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("Failed to enumerate  files in %s (err: %s)", path, err.Error())
+	} else {
+		log.Debugf("AFTER watch for %s - list of files: \n%s\n", device, out)
+	}
+
 }
 
 // Mkdir creates a directory at the specified path
@@ -197,10 +216,10 @@ func MountWithID(mountpoint string, fstype string, id string, isReadOnly bool) e
 	// Loop over all hosts and scan each one
 	device, err := GetDevicePathByID(id)
 	if err != nil {
-		return fmt.Errorf("Invalid device path %s for %s: %s",
-			device, mountpoint, err)
+		return fmt.Errorf("Invalid device path %s for %s: %s", device, mountpoint, err)
 	}
 
+	log.Debugf("Device path: ", device)
 	flags := 0
 	if isReadOnly {
 		flags = syscall.MS_RDONLY
@@ -258,6 +277,7 @@ func GetDevicePathByID(id string) (string, error) {
 	}
 	_, err = os.Stat(device)
 	if err != nil {
+		log.Debugf("os.Stat('%s') failed with '%s'", device, err)
 		return "", err
 	}
 	return device, nil
@@ -276,7 +296,7 @@ func DeleteDevicePathWithID(id string) error {
 	node := bdevPath + links[len(links)-1] + deleteFile
 	bytes := []byte("1")
 
-	log.Debugf("Deleteing device node - id: %s, node: %s", id, node)
+	log.Debugf("Deleting device node - id: %s, node: %s", id, node)
 	err = ioutil.WriteFile(node, bytes, 0644)
 	if err != nil {
 		return err
@@ -303,7 +323,7 @@ func GetDevicePath(str []byte) (string, error) {
 	if err != nil {
 		log.WithFields(log.Fields{"Error": err}).Warn("Get device path failed for unit# %s @ PCI slot %s: ",
 			volDev.Unit, volDev.ControllerPciSlotNumber)
-		return "", fmt.Errorf("Device not found")
+		return "", fmt.Errorf("Device is not found: %s", pciSlotAddr)
 	}
 
 	buf := make([]byte, pciAddrLen)
@@ -311,9 +331,9 @@ func GetDevicePath(str []byte) (string, error) {
 
 	fh.Close()
 	if err != nil && err != io.EOF {
-		log.WithFields(log.Fields{"Error": err}).Warn("Get device path failed for unit# %s @ PCI slot %s: ",
+		log.WithFields(log.Fields{"Error": err}).Warn("Get device path failed in read for unit# %s @ PCI slot %s: ",
 			volDev.Unit, volDev.ControllerPciSlotNumber)
-		return "", fmt.Errorf("Device not found")
+		return "", fmt.Errorf("Device read failed: %s", pciSlotAddr)
 	}
 	return fmt.Sprintf("/dev/disk/by-path/pci-%s.0-scsi-0:0:%s:0", string(buf), volDev.Unit), nil
 

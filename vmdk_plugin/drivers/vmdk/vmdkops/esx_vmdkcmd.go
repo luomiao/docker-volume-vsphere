@@ -81,10 +81,10 @@ func (vmdkCmd EsxVmdkCmd) Run(cmd string, name string, opts map[string]string) (
 	vmdkCmd.Mtx.Lock()
 	defer vmdkCmd.Mtx.Unlock()
 	protocolVersion := os.Getenv("VDVS_TEST_PROTOCOL_VERSION")
-	log.Debugf("Run get request: version=%s", protocolVersion)
 	if protocolVersion == "" {
 		protocolVersion = clientProtocolVersion
 	}
+	log.Debugf("Run get request: version=%s", protocolVersion)
 	jsonStr, err := json.Marshal(&requestToVmci{
 		Ops:     cmd,
 		Details: VolumeInfo{Name: name, Options: opts},
