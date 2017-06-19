@@ -30,10 +30,14 @@ func CreateVMgroup(ip, name, vmName string) (string, error) {
 	return ssh.InvokeCommand(ip, admincli.CreateVMgroup+name+" --default-datastore="+admincli.VMHomeDatastore+" --vm-list="+vmName)
 }
 
-// DeleteVMgroup method deletes a vmgroup and removes its volumes as well
-func DeleteVMgroup(ip, name string) (string, error) {
-	log.Printf("Deleting a vmgroup [%s] on esx [%s]\n", name, ip)
-	return ssh.InvokeCommand(ip, admincli.RemoveVMgroup+name+admincli.RemoveVolumes)
+// DeleteVMgroup method deletes a vmgroup and removes its volumes as well if "delete_vol" is set
+func DeleteVMgroup(ip, name string, delete_vol bool) (string, error) {
+	log.Printf("Deleting a vmgroup [%s] on esx [%s] with delete_vol[%d]\n", name, ip, delete_vol)
+	if delete_vol {
+		return ssh.InvokeCommand(ip, admincli.RemoveVMgroup+name+admincli.RemoveVolumes)
+	} else {
+		return ssh.InvokeCommand(ip, admincli.RemoveVMgroup+name)
+	}
 }
 
 // AddVMToVMgroup - Adds vm to vmgroup
@@ -54,16 +58,22 @@ func ReplaceVMFromVMgroup(ip, name, vmName string) (string, error) {
 	return ssh.InvokeCommand(ip, admincli.ReplaceVMFromVMgroup+name+" --vm-list="+vmName)
 }
 
-// AddCreateAccessForVMgroup - set allow-create access on the vmgroup
+// AddCreateAccessForVMgroup - add allow-create access on the vmgroup
 func AddCreateAccessForVMgroup(ip, name, datastore string) (string, error) {
+	log.Printf("Creating create access for vmgroup %s, datastore %s on esx [%s] \n", name, datastore, ip)
+	return ssh.InvokeCommand(ip, admincli.AddAccessForVMgroup+name+" --allow-create --datastore "+datastore)
+}
+
+// SetCreateAccessForVMgroup - set allow-create access on the vmgroup
+func SetCreateAccessForVMgroup(ip, name, datastore string) (string, error) {
 	log.Printf("Enabling create access for vmgroup %s, datastore %s on esx [%s] \n", name, datastore, ip)
-	return ssh.InvokeCommand(ip, admincli.SetAccessForVMgroup + name + " --allow-create True --datastore " + datastore)
+	return ssh.InvokeCommand(ip, admincli.SetAccessForVMgroup+name+" --allow-create True --datastore "+datastore)
 }
 
 // RemoveCreateAccessForVMgroup - remove ellow-create access on the vmgroup
 func RemoveCreateAccessForVMgroup(ip, name, datastore string) (string, error) {
 	log.Printf("Removing create access for vmgroup %s, datastore %s on esx [%s] \n", name, datastore, ip)
-	return ssh.InvokeCommand(ip, admincli.SetAccessForVMgroup + name + " --allow-create False --datastore " + datastore)
+	return ssh.InvokeCommand(ip, admincli.SetAccessForVMgroup+name+" --allow-create False --datastore "+datastore)
 }
 
 // SetVolumeSizeForVMgroup - set max and total volume size for vmgroup

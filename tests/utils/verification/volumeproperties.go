@@ -19,6 +19,8 @@
 package verification
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"strings"
 
@@ -46,7 +48,8 @@ func GetVMAttachedToVolUsingAdminCli(volName string, hostname string) string {
 	op, _ := ssh.InvokeCommand(hostname, cmd)
 	volProps := strings.Fields(op)
 	if op == "" {
-		log.Fatal("Null value is returned by admin cli when looking for attached to vm field for volume. Output: ", op)
+		log.Printf("Null value is returned by admin cli when looking for attached to vm field for volume %s ", volName)
+		return op
 	}
 	if len(volProps) != 2 {
 		log.Fatalf("Admin cli output is expected to consist of two elements only - "+
@@ -152,6 +155,29 @@ func VerifyDetachedStatus(name, hostName, esxName string) bool {
 	return false
 }
 
+// VerifyDetachedStatusOnNonDefaultDS - For volume on non-default DS,
+// check if the status gets detached within the timeout
+func VerifyDetachedStatusOnNonDefaultDS(name, datastore, hostName, esxName string) bool {
+	log.Printf("Confirming detached status for volume [%s] on datastore[%s]\n", name, datastore)
+
+	//TODO: Need to implement generic polling logic for better reuse
+	const maxAttempt = 60
+	for attempt := 0; attempt < maxAttempt; attempt++ {
+		misc.SleepForSec(2)
+		status := getVolumeStatusHost(name+"@"+datastore, hostName)
+		if status != properties.DetachedStatus {
+			continue
+		}
+		// this api returnes "detached" in when volume is detached
+		status = GetVMAttachedToVolUsingAdminCli(name, esxName)
+		if status == properties.DetachedStatus {
+			return true
+		}
+	}
+	log.Printf("Timed out to poll status\n")
+	return false
+}
+
 // GetAssociatedPolicyName returns the vsan policy name used by the volume using docker cli
 func GetAssociatedPolicyName(hostname string, volName string) (string, error) {
 	cmd := dockercli.InspectVolume + " --format '{{index .Status \"vsan-policy-name\"}}' " + volName
@@ -160,4 +186,26 @@ func GetAssociatedPolicyName(hostname string, volName string) (string, error) {
 		log.Printf("Null value is returned by docker cli when looking for the name of vsan policy used by volume. Output: ", op)
 	}
 	return op, err
+}
+
+// GetVMGroupForVolume returns vmgroup field of volume using admin cli
+// If the volume does not exist, err will be filled with "exit status 1"
+func GetVMGroupForVolume(hostName string, volName string) (string, error) {
+	cmd := admincli.ListVolumes + "-c volume,vmgroup 2>/dev/null | grep " + volName
+	op, err := ssh.InvokeCommand(hostName, cmd)
+	if err != nil {
+		log.Printf("GetVMGroupForVolume return with err: %s", err.Error())
+		return "", err
+	}
+	volProps := strings.Fields(op)
+	if op == "" {
+		msg := fmt.Sprintf("Null value is returned by admin cli when looking for vmgroup field for volume %s", volName)
+		log.Printf(msg)
+		return op, errors.New(msg)
+	}
+	if len(volProps) != 2 {
+		log.Printf("Admin cli output is expected to consist of two elements only - "+
+			"volume name and vmgrop. Actual output %s ", op)
+	}
+	return volProps[1], nil
 }
