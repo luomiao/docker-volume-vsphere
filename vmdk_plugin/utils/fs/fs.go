@@ -132,7 +132,12 @@ loop:
 	} else {
 		log.Debugf("AFTER watch for %s - list of files: \n%s\n", device, out)
 	}
-
+	fileInfo, err := os.Stat(device)
+	if err != nil {
+		log.Debugf("Can's Stat %s , err: %s", device, err.Error())
+	} else {
+		log.Debugf("Stat success on %s: %v ", device, fileInfo)
+	}
 }
 
 // Mkdir creates a directory at the specified path

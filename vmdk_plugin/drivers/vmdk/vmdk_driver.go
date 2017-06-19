@@ -343,6 +343,7 @@ func (d *VolumeDriver) Create(r volume.Request) volume.Response {
 			"fstype": r.Options["fstype"]}).Error("Not found ")
 		return volume.Response{Err: msg + validfs}
 	}
+	log.Debugf("%s requested, will use %s", r.Options["fstype"], mkfscmd)
 
 	errCreate := d.ops.Create(r.Name, r.Options)
 	if errCreate != nil {
