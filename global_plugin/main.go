@@ -14,7 +14,7 @@
 
 package main
 
-// A VMDK Docker Data Volume plugin - main
+// A Global Docker Data Volume plugin - main
 
 import (
 	"flag"
@@ -28,8 +28,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/natefinch/lumberjack"
-	"github.com/vmware/docker-volume-vsphere/vmdk_plugin/drivers/photon"
-	"github.com/vmware/docker-volume-vsphere/vmdk_plugin/drivers/vmdk"
+	"github.com/vmware/docker-volume-vsphere/global_plugin/drivers/global"
 	"github.com/vmware/docker-volume-vsphere/vmdk_plugin/utils/config"
 	"github.com/vmware/docker-volume-vsphere/vmdk_plugin/utils/log_formatter"
 )
@@ -60,7 +59,7 @@ func logInit(logLevel *string, logFile *string, configFile *string) bool {
 
 	path := c.LogPath
 	if path == "" {
-		path = config.DefaultLogPath
+		path = config.DefaultGlobalLogPath
 	}
 
 	if logFile != nil {
@@ -102,17 +101,8 @@ func main() {
 	if *logLevel == "" {
 		logLevel = flag.String("log_level", "", "Logging Level")
 	}
-	configFile := flag.String("config", config.DefaultConfigPath, "Configuration file path")
+	configFile := flag.String("config", config.DefaultGlobalConfigPath, "Configuration file path")
 	driverName := flag.String("driver", "", "Volume driver")
-
-	// Photon driver options
-	targetURL := flag.String("target", "", "Photon controller URL")
-	projectID := flag.String("project", "", "Project ID of the docker host")
-	vmID := flag.String("host", "", "ID of docker host")
-
-	// vSphere driver options
-	port := flag.Int("port", defaultPort, "Default port to connect to ESX service")
-	useMockEsx := flag.Bool("mock_esx", false, "Mock the ESX service")
 
 	flag.Parse()
 
@@ -130,17 +120,16 @@ func main() {
 		if err == nil && c.Driver != "" {
 			*driverName = c.Driver
 		} else {
-			*driverName = vsphereDriver
+			*driverName = globalDriver
 		}
 	}
 
-	// The windows plugin only supports the vsphere driver.
-	if runtime.GOOS == "windows" && *driverName != vsphereDriver {
-		msg := fmt.Sprintf("Plugin only supports the %s driver on Windows, ignoring parameter driver = %s.",
-			vsphereDriver, c.Driver)
+	if runtime.GOOS == "windows" {
+		msg := fmt.Sprintf("Support of %s driver on Windows TBD.",
+			*driverName)
 		log.Warning(msg)
 		fmt.Println(msg)
-		*driverName = vsphereDriver
+		os.Exit(1)
 	}
 
 	log.WithFields(log.Fields{
@@ -149,38 +138,9 @@ func main() {
 		"config":    *configFile,
 	}).Info("Starting plugin ")
 
-	// The vSphere driver doesn't depend on the config file for options
-	if *driverName == photonDriver && err == nil {
-		if *targetURL == "" {
-			*targetURL = c.Target
-		}
-		if *projectID == "" {
-			*projectID = c.Project
-		}
-		if *vmID == "" {
-			*vmID = c.Host
-		}
-
-		log.WithFields(log.Fields{
-			"target":  *targetURL,
-			"project": *projectID,
-			"host":    *vmID}).Info("Plugin options - ")
-
-		if *targetURL == "" || *projectID == "" || *vmID == "" {
-			log.Warning("Invalid options specified for target/project/host")
-			fmt.Printf("Invalid options specified for target - %s project - %s host - %s. Exiting.\n",
-				*targetURL, *projectID, *vmID)
-			os.Exit(1)
-		}
-		driver = photon.NewVolumeDriver(*targetURL, *projectID,
-			*vmID, mountRoot)
-	} else if *driverName == vsphereDriver || *driverName == vmdkDriver {
-		if *driverName == vmdkDriver {
-			log.Warning("Using deprecated \"vmdk\" driver, use \"vsphere\" driver instead - continuing...")
-		}
-		log.WithFields(log.Fields{"port": *port}).Info("Plugin options - ")
-
-		driver = vmdk.NewVolumeDriver(*port, *useMockEsx, mountRoot, *driverName)
+	// The Global driver doesn't depend on the config file for options
+	if *driverName == globalDriver {
+		driver = global.NewVolumeDriver(mountRoot, *driverName)
 	} else {
 		log.Warning("Unknown driver or invalid/missing driver options, exiting - ", *driverName)
 		os.Exit(1)

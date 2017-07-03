@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config
+package main
 
 const (
-	// Default paths - used in log init in main() and test:
+	// vDVS Global driver.
+	globalDriver = "global"
 
-	// DefaultConfigPath is the default location of Log configuration file
-	DefaultConfigPath = "/etc/docker-volume-vsphere.conf"
-	// DefaultLogPath is the default location of log (trace) file
-	DefaultLogPath = "/var/log/docker-volume-vsphere.log"
-	// DefaultGlobalConfigPath is the default location of Log configuration file for global plugin
-	DefaultGlobalConfigPath = "/etc/docker-volume-global.conf"
-	// DefaultGlobalLogPath is the default location of log (trace) file for global plugin
-	DefaultGlobalLogPath = "/var/log/docker-volume-global.log"
+	// Docker driver types.
+	volumeDriver = "VolumeDriver"
+
+	// Docker plugin handshake endpoint.
+	// Also see https://docs.docker.com/engine/extend/plugin_api/#handshake-api
+	pluginActivatePath = "/Plugin.Activate"
+
+	// Docker volume plugin endpoints.
+	// Also see https://docs.docker.com/engine/extend/plugins_volume/#volume-plugin-protocol
+	volumeDriverCreatePath = "/VolumeDriver.Create"
 )
