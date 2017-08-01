@@ -114,7 +114,7 @@ type VolumeDriver struct {
 	utils.PluginDriver
 	dockerd              *dockerClient.Client
 	internalVolumeDriver string
-	etcd                 etcdInfo
+	etcd                 *etcdKVS
 }
 
 // NewVolumeDriver creates driver instance
@@ -147,10 +147,9 @@ func NewVolumeDriver(cfg config.Config, mountDir string) *VolumeDriver {
 	d.dockerd = cli
 
 	// initialize built-in etcd cluster
-	d.etcd.driver = &d
-	err = d.etcd.Init()
-	if err != nil {
-		log.Errorf("Failed to InitEtcd")
+	d.etcd = NewKvStore(&d)
+	if d.etcd == nil {
+		log.Errorf("Failed to create new etcd KV store")
 		return nil
 	}
 
