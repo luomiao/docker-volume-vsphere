@@ -25,6 +25,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	etcdClient "github.com/coreos/etcd/clientv3"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/swarm"
 )
 
 /*
@@ -89,10 +90,10 @@ func NewKvStore(driver *VolumeDriver) *etcdKVS {
 	var e *etcdKVS
 
 	ctx := context.Background()
-	docker := driver.dockerd
+	dclient := driver.dockerd
 
 	// get NodeID from docker client
-	info, err := docker.Info(ctx)
+	info, err := dclient.Info(ctx)
 	if err != nil {
 		log.WithFields(
 			log.Fields{"error": err},
@@ -101,6 +102,13 @@ func NewKvStore(driver *VolumeDriver) *etcdKVS {
 	}
 
 	// get the swarmID and IP address of current node
+	if info.Swarm.LocalNodeState != swarm.LocalNodeStateActive {
+		log.WithFields(
+			log.Fields{"LocalNodeState": string(info.Swarm.LocalNodeState)},
+		).Errorf("Swarm node state is not active ")
+		return nil
+	}
+
 	nodeID := info.Swarm.NodeID
 	addr := info.Swarm.NodeAddr
 
@@ -114,12 +122,12 @@ func NewKvStore(driver *VolumeDriver) *etcdKVS {
 	if info.Swarm.ControlAvailable == false {
 		log.WithFields(
 			log.Fields{"nodeID": nodeID},
-		).Info("Swarm node role: worker. Action: return from InitEtcd ")
+		).Info("Swarm node role: worker. No further action needed, return from NewKvStore ")
 		return e
 	}
 
 	// check my local role
-	node, _, err := docker.NodeInspectWithRaw(ctx, nodeID)
+	node, _, err := dclient.NodeInspectWithRaw(ctx, nodeID)
 	if err != nil {
 		log.WithFields(log.Fields{"nodeID": nodeID,
 			"error": err}).Error("Failed to inspect node ")
@@ -130,7 +138,7 @@ func NewKvStore(driver *VolumeDriver) *etcdKVS {
 	if node.ManagerStatus.Leader {
 		log.WithFields(
 			log.Fields{"nodeID": nodeID},
-		).Info("Swarm node role: leader, start etcd cluster")
+		).Info("Swarm node role: leader, start ETCD cluster")
 		err = e.startEtcdCluster()
 		if err != nil {
 			log.WithFields(log.Fields{"nodeID": nodeID,
@@ -141,7 +149,7 @@ func NewKvStore(driver *VolumeDriver) *etcdKVS {
 	}
 
 	// if manager, first find out who's leader, then proceed to join ETCD cluster
-	nodes, err := docker.NodeList(ctx, types.NodeListOptions{})
+	nodes, err := dclient.NodeList(ctx, types.NodeListOptions{})
 	if err != nil {
 		log.WithFields(log.Fields{"nodeID": nodeID,
 			"error": err}).Error("Failed to get NodeList from swarm manager")
@@ -154,7 +162,7 @@ func NewKvStore(driver *VolumeDriver) *etcdKVS {
 					"manager ID": nodeID},
 			).Info("Swarm node role: manager. Action: find leader ")
 
-			e.joinEtcdCluster(n.ManagerStatus.Addr)
+			err = e.joinEtcdCluster(n.ManagerStatus.Addr)
 			if err != nil {
 				log.WithFields(log.Fields{"nodeID": nodeID,
 					"error": err}).Error("Failed to join ETCD Cluster")
@@ -226,7 +234,7 @@ func (e *etcdKVS) joinEtcdCluster(leaderAddr string) error {
 				log.WithFields(
 					log.Fields{"nodeID": nodeID,
 						"peerAddr": peerAddr},
-				).Info("Already joined as etcd member but not started. ")
+				).Info("Already joined as ETCD member but not started. ")
 
 				existing = true
 			} else {
@@ -236,7 +244,7 @@ func (e *etcdKVS) joinEtcdCluster(leaderAddr string) error {
 				log.WithFields(
 					log.Fields{"nodeID": nodeID,
 						"peerAddr": peerAddr},
-				).Info("Already joined as a etcd member and started. Action: remove self before re-join ")
+				).Info("Already joined as a ETCD member and started. Action: remove self before re-join ")
 
 				_, err = etcd.MemberRemove(context.Background(), member.ID)
 				if err != nil {
@@ -301,7 +309,7 @@ func etcdService(cmd []string) {
 	if err != nil {
 		log.WithFields(
 			log.Fields{"error": err, "cmd": cmd},
-		).Error("Failed to start etcd command ")
+		).Error("Failed to start ETCD command ")
 	}
 }
 
@@ -316,20 +324,20 @@ func (e *etcdKVS) checkLocalEtcd() error {
 	for {
 		select {
 		case <-ticker.C:
-			log.Infof("Checking etcd client is started")
+			log.Infof("Checking ETCD client is started")
 			cli, err := addrToEtcdClient(e.nodeAddr)
 			if err != nil {
 				log.WithFields(
 					log.Fields{"nodeAddr": e.nodeAddr,
 						"error": err},
-				).Warningf("Failed to get etcd client, retry before timeout ")
+				).Warningf("Failed to get ETCD client, retry before timeout ")
 			} else {
 				e.client = cli
 				go e.etcdWatcher()
 				return nil
 			}
 		case <-timer.C:
-			return fmt.Errorf("Timeout reached; etcd cluster is not started")
+			return fmt.Errorf("Timeout reached; ETCD cluster is not started")
 		}
 	}
 }
@@ -401,6 +409,8 @@ func (e *etcdKVS) etcdEventHandler(ev *etcdClient.Event) {
 	return
 }
 
+// CompareAndPut function: compare the value of the kay with oldVal
+// if equal, replace with newVal and return true; or else, return false.
 func (e *etcdKVS) CompareAndPut(key string, oldVal string, newVal string) bool {
 	txresp, err := e.client.Txn(context.TODO()).If(
 		etcdClient.Compare(etcdClient.Value(key), "=", oldVal),
@@ -411,7 +421,9 @@ func (e *etcdKVS) CompareAndPut(key string, oldVal string, newVal string) bool {
 	if err != nil {
 		log.WithFields(
 			log.Fields{"Key": key,
-				"Error": err},
+				"Value to compare": oldVal,
+				"Value to replace": newVal,
+				"Error":            err},
 		).Errorf("Failed to compare and put ")
 		return false
 	}
@@ -440,7 +452,7 @@ func (e *etcdKVS) createEtcdClient() *etcdClient.Client {
 	log.WithFields(
 		log.Fields{"Swarm ID": info.Swarm.NodeID,
 			"IP Addr": info.Swarm.NodeAddr},
-	).Error("Failed to create etcd client according to manager info ")
+	).Error("Failed to create ETCD client according to manager info ")
 	return nil
 }
 
@@ -484,7 +496,7 @@ func (e *etcdKVS) ListVolumeName() ([]string, error) {
 	if err != nil {
 		log.WithFields(
 			log.Fields{"error": err},
-		).Error("Failed to call etcd Get for listing all volumes ")
+		).Error("Failed to call ETCD Get for listing all volumes ")
 		return nil, err
 	}
 
