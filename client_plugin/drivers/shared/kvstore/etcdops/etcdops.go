@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -386,7 +387,7 @@ func (e *EtcdKVS) CompareAndPut(key string, oldVal string, newVal string) bool {
 	// Create a client to talk to etcd
 	etcdAPI := e.createEtcdClient()
 	if etcdAPI == nil {
-                log.Warningf(etcdClientCreateError)
+		log.Warningf(etcdClientCreateError)
 		return false
 	}
 	defer etcdAPI.Close()
@@ -534,13 +535,14 @@ func addrToEtcdClient(addr string) (*etcdClient.Client, error) {
 func (e *EtcdKVS) List(prefix string) ([]string, error) {
 	var keys []string
 
-	etcd := e.createEtcdClient()
-	if etcd == nil {
-		return nil, fmt.Errorf(etcdClientCreateError)
+	etcdAPI := e.createEtcdClient()
+	if etcdAPI == nil {
+		return keys, fmt.Errorf(etcdClientCreateError)
 	}
+	defer etcdAPI.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := etcd.Get(ctx, prefix, etcdClient.WithPrefix(),
+	resp, err := etcdAPI.Get(ctx, prefix, etcdClient.WithPrefix(),
 		etcdClient.WithSort(etcdClient.SortByKey, etcdClient.SortDescend))
 	cancel()
 	if err != nil {
@@ -678,4 +680,133 @@ func (e *EtcdKVS) DeleteMetaData(name string) error {
 		return errors.New(msg)
 	}
 	return nil
+}
+
+// AtomicIncr - Increase a key value by 1
+func (e *EtcdKVS) AtomicIncr(key string) error {
+	// Create a client to talk to etcd
+	etcdAPI := e.createEtcdClient()
+	if etcdAPI == nil {
+		return fmt.Errorf(etcdClientCreateError)
+	}
+	defer etcdAPI.Close()
+
+	ticker := time.NewTicker(checkSleepDuration)
+	defer ticker.Stop()
+	timer := time.NewTimer(requestTimeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			resp, err := etcdAPI.Get(ctx, key)
+			cancel()
+			if err != nil {
+				log.WithFields(
+					log.Fields{"key": key,
+						"error": err},
+				).Error("Failed to Get key-value from ETCD Client ")
+				return err
+			}
+
+			oldVal := string(resp.Kvs[0].Value)
+			num, _ := strconv.Atoi(oldVal)
+			num++
+			newVal := strconv.Itoa(num)
+			if e.CompareAndPut(key, oldVal, newVal) {
+				return nil
+			}
+		case <-timer.C:
+			return fmt.Errorf("Timeout reached; AtomicIncr is not complete")
+		}
+	}
+}
+
+// AtomicDecr - Decrease a key value by 1
+func (e *EtcdKVS) AtomicDecr(key string) error {
+	// Create a client to talk to etcd
+	etcdAPI := e.createEtcdClient()
+	if etcdAPI == nil {
+		return fmt.Errorf(etcdClientCreateError)
+	}
+	defer etcdAPI.Close()
+
+	ticker := time.NewTicker(checkSleepDuration)
+	defer ticker.Stop()
+	timer := time.NewTimer(requestTimeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			resp, err := etcdAPI.Get(ctx, key)
+			cancel()
+			if err != nil {
+				log.WithFields(
+					log.Fields{"key": key,
+						"error": err},
+				).Error("Failed to Get key-value from ETCD Client ")
+				return err
+			}
+
+			oldVal := string(resp.Kvs[0].Value)
+			num, _ := strconv.Atoi(oldVal)
+			if num == 0 {
+				return fmt.Errorf("Cannot decrease a value equal to 0")
+			}
+			num--
+			newVal := strconv.Itoa(num)
+			if e.CompareAndPut(key, oldVal, newVal) {
+				return nil
+			}
+		case <-timer.C:
+			return fmt.Errorf("Timeout reached; AtomicDecr is not complete")
+		}
+	}
+}
+
+// BlockingWaitAndGet - Blocking wait until a key value becomes equal to a specific value
+// then read the value of another key
+func (e *EtcdKVS) BlockingWaitAndGet(key string, value string, newKey string) (string, error) {
+	// Create a client to talk to etcd
+	etcdAPI := e.createEtcdClient()
+	if etcdAPI == nil {
+		return "", fmt.Errorf(etcdClientCreateError)
+	}
+	defer etcdAPI.Close()
+
+	ticker := time.NewTicker(checkSleepDuration)
+	defer ticker.Stop()
+	timer := time.NewTimer(2 * requestTimeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			txresp, err := e.client.Txn(context.TODO()).If(
+				etcdClient.Compare(etcdClient.Value(key), "=", value),
+			).Then(
+				etcdClient.OpGet(newKey),
+			).Commit()
+
+			if err != nil {
+				log.WithFields(
+					log.Fields{"key": key,
+						"value":   value,
+						"new key": newKey,
+						"error":   err},
+				).Error("Failed to compare and get from ETCD client")
+				return "", err
+			}
+
+			if txresp.Succeeded {
+				resp := txresp.Responses[0].GetResponseRange()
+				return string(resp.Kvs[0].Value), nil
+			}
+		case <-timer.C:
+			return "", fmt.Errorf("Timeout reached; BlockingWait is not complete")
+		}
+	}
 }
