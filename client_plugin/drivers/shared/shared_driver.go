@@ -435,7 +435,8 @@ func (d *VolumeDriver) processMount(r volume.MountRequest) volume.Response {
 	mountpoint, err := d.MountVolume(r.Name, "", "", false, true)
 	if err != nil {
 		log.WithFields(
-			log.Fields{"name": r.Name, "error": err},
+			log.Fields{"name": r.Name,
+				"error": err},
 		).Error("Failed to mount ")
 
 		refcnt, _ := d.DecrRefCount(r.Name)
@@ -449,14 +450,15 @@ func (d *VolumeDriver) processMount(r volume.MountRequest) volume.Response {
 	return volume.Response{Mountpoint: mountpoint}
 }
 
-// MountVolume - Request attach and them mounts the volume.
+// MountVolume - Request attach and then mounts the volume.
 func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isReadOnly bool, skipAttach bool) (string, error) {
 	mountpoint := d.GetMountPoint(name)
 	// First, make sure  that mountpoint exists.
 	err := fs.Mkdir(mountpoint)
 	if err != nil {
 		log.WithFields(
-			log.Fields{"name": name, "dir": mountpoint},
+			log.Fields{"name": name,
+				"dir": mountpoint},
 		).Error("Failed to make directory for volume mount ")
 		return mountpoint, err
 	}
@@ -466,7 +468,8 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 	err = d.kvStore.AtomicIncr(kvstore.VolPrefixGRef + name)
 	if err != nil {
 		log.WithFields(
-			log.Fields{"name": name, "error": err},
+			log.Fields{"name": name,
+				"error": err},
 		).Error("Failed to increase global refcount when processMount ")
 		return "", err
 	}
@@ -480,7 +483,9 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 		if err != nil {
 			msg += fmt.Sprintf(" Also failed to decrease global refcount. Error: %v.", err)
 		}
-		log.WithFields(log.Fields{"name": name, "error": msg}).Error("")
+		log.WithFields(
+			log.Fields{"name": name,
+				"error": msg}).Error("")
 		return "", errors.New(msg)
 	}
 
@@ -490,7 +495,10 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 	// Unmarshal Info key
 	err = json.Unmarshal([]byte(info), &volRecord)
 	if err != nil {
-		log.WithFields(log.Fields{"name": name, "error": err}).Error("Failed to unmarshal info data ")
+		log.WithFields(
+			log.Fields{"name": name,
+				"error": err},
+		).Error("Failed to unmarshal info data ")
 		return "", err
 	}
 
@@ -506,7 +514,9 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 		if err != nil {
 			msg += fmt.Sprintf(" Also failed to decrease global refcount. Error: %v.", err)
 		}
-		log.WithFields(log.Fields{"name": name, "error": msg}).Error("")
+		log.WithFields(
+			log.Fields{"name": name,
+				"error": msg}).Error("")
 		return "", errors.New(msg)
 	}
 
