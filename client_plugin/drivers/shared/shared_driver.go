@@ -474,7 +474,9 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 		return "", err
 	}
 
-	// Blocking wait till Mounted
+	// Blocking wait until the state of volume becomes Mounted
+	// the change of global refcount will trigger one watcher on manager nodes
+	// watchers should start event handler to transit the state of volumes
 	info, err := d.kvStore.BlockingWaitAndGet(kvstore.VolPrefixState+name,
 		string(kvstore.VolStateMounted), kvstore.VolPrefixInfo+name)
 	if err != nil {
@@ -510,6 +512,8 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 	err = d.mountSharedVolume(name, mountpoint, &volRecord)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to mount shared volume. Error: %v.", err)
+		// AtomicDecr decreases global refcount by one
+		// if global refcount reduces from 1 to 0, a watcher event is triggered on manager nodes
 		err = d.kvStore.AtomicDecr(kvstore.VolPrefixGRef + name)
 		if err != nil {
 			msg += fmt.Sprintf(" Also failed to decrease global refcount. Error: %v.", err)
@@ -523,7 +527,7 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 	return mountpoint, nil
 }
 
-// mountSharedVolume - mount the shared volume.
+// mountSharedVolume - mount the shared volume according to volume metadata
 func (d *VolumeDriver) mountSharedVolume(volName string, mountpoint string, volRecord *VolumeMetadata) error {
 	// Build mount command as follows:
 	//   mount [-t $fstype] [-o $options] [$source] $target
