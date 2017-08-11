@@ -148,6 +148,7 @@ func (d *VolumeDriver) Get(r volume.Request) volume.Response {
 	log.Infof("VolumeDriver Get: %s", r.Name)
 	status, err := d.GetVolume(r.Name)
 	if err != nil {
+		log.WithFields(log.Fields{"name": r.Name, "error": err}).Error("Failed to get volume meta-data ")
 		return volume.Response{Err: err.Error()}
 	}
 
@@ -160,6 +161,7 @@ func (d *VolumeDriver) Get(r volume.Request) volume.Response {
 func (d *VolumeDriver) List(r volume.Request) volume.Response {
 	volumes, err := d.kvStore.List(kvstore.VolPrefixState)
 	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to get volume list ")
 		return volume.Response{Err: err.Error()}
 	}
 
