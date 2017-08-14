@@ -373,7 +373,7 @@ func (d *VolumeDriver) Remove(r volume.Request) volume.Response {
 			log.Errorf(msg)
 			return volume.Response{Err: msg}
 		} else {
-			msg = fmt.Sprintf("Remove failed: cannot delete from current state.")
+			msg = fmt.Sprintf("Remove failed: cannot delete from current state %s.", state)
 			log.Errorf(msg)
 			return volume.Response{Err: msg}
 		}
