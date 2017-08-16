@@ -354,11 +354,14 @@ func (d *VolumeDriver) Remove(r volume.Request) volume.Response {
 		}
 
 		state := entries[0].Value
-		log.Infof("State of volume %s is %s", r.Name, state)
-		if state == string(kvstore.VolStateDeleting) {
+		switch state {
+		case string(kvstore.VolStateDeleting):
 			msg = fmt.Sprintf("Volume already in deleting state after timeout. Continue deleting")
 			log.Warningf(msg)
-		} else if state == string(kvstore.VolStateMounted) {
+		case string(kvstore.VolStateError):
+			msg = fmt.Sprintf("Volume in error state. Continue deleting")
+			log.Warningf(msg)
+		case string(kvstore.VolStateMounted):
 			// Unmarshal Info key
 			err = json.Unmarshal([]byte(entries[1].Value), &volRecord)
 			if err != nil {
@@ -372,7 +375,7 @@ func (d *VolumeDriver) Remove(r volume.Request) volume.Response {
 				strings.Join(volRecord.ClientList, ","))
 			log.Errorf(msg)
 			return volume.Response{Err: msg}
-		} else {
+		default:
 			msg = fmt.Sprintf("Remove failed: cannot delete from current state %s.", state)
 			log.Errorf(msg)
 			return volume.Response{Err: msg}
