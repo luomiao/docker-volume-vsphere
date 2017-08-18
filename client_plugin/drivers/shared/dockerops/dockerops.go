@@ -43,7 +43,7 @@ const (
 	// dockerUSocket: Unix socket on which Docker engine is listening
 	dockerUSocket = "unix:///var/run/docker.sock"
 	// Postfix added to names of Samba services for volumes
-	serviceNamePrefix = "vSharedServer_"
+	serviceNamePrefix = "vSharedServer"
 	// Path where the file server image resides in plugin
 	fileServerPath = "/usr/lib/vmware/samba.tar"
 	// Driver for the network which Samba services will use
