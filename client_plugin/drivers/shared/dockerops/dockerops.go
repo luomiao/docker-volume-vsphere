@@ -358,7 +358,7 @@ func (d *DockerOps) isFileServiceRunning(servID string, volName string) (uint32,
 //      error:   error returned when it can not can service ID and port number
 func (d *DockerOps) getServiceIDAndPort(volName string) (string, uint32, error) {
 	// Grep the samba service running using service name
-	serviceName := volName + serviceNamePostfix
+	serviceName := serviceNamePrefix + volName
 	serviceFilters := filters.NewArgs()
 	serviceFilters.Add("name", serviceName)
 	services, err := d.Dockerd.ServiceList(context.Background(),

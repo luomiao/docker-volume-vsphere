@@ -350,11 +350,18 @@ func (d *VolumeDriver) Remove(r volume.Request) volume.Response {
 		state := entries[0].Value
 		switch state {
 		case string(kvstore.VolStateDeleting):
+			log.Warningf("Remove: volume in Deleting state after timeout. Continue deleting.")
 		case string(kvstore.VolStateError):
 		case string(kvstore.VolStateCreating):
 		case string(kvstore.VolStateUnmounting):
-			msg = fmt.Sprintf("Remove: volume in %s state after timeout. Continue deleting", state)
-			log.Warningf(msg)
+			log.Warningf("Remove: volume in %s state after timeout. Continue deleting", state)
+			if !d.kvStore.CompareAndPut(kvstore.VolPrefixState+r.Name,
+				state, string(kvstore.VolStateDeleting)) {
+				msg = fmt.Sprintf("Remove: Volume state changed unexpected. Please retry later")
+				log.Errorf(msg)
+				return volume.Response{Err: msg}
+
+			}
 		case string(kvstore.VolStateMounted):
 			// Unmarshal Info key
 			err = json.Unmarshal([]byte(entries[1].Value), &volRecord)

@@ -380,12 +380,12 @@ func (e *EtcdKVS) cleanOrphanServiceAndVolume(volumesToVerify []string, stopServ
 		volName = trimVolName(volName)
 		state, found := volStates[string(kvstore.VolPrefixState)+volName]
 		if !found ||
-			state == string(kvstore.VolStateDeleting) ||
-			state == string(kvstore.VolStateError) {
+			state == string(kvstore.VolStateDeleting) {
 			if stopService {
 				log.Warningf("The service for vShared volume %s needs to be shutdown.", volName)
 				e.dockerOps.StopSMBServer(volName)
 			}
+
 			log.Warningf("The internal volume of vShared volume %s needs to be removed.", volName)
 			e.dockerOps.DeleteInternalVolume(volName)
 		}
