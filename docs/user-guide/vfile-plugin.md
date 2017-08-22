@@ -34,7 +34,7 @@ Detailed documentation can be found on our [GitHub Documentation Page](http://vm
 ## Installing
 The recommended way to install vFile plugin is from docker cli:
 ```
-docker plugin install --grant-all-permissions --alias vfile vmware/vfile:latest
+docker plugin install --grant-all-permissions --alias vfile cnastorage/vfile:latest
 ```
 Note: please make sure the base volume plugin is already installed!
 
@@ -123,4 +123,4 @@ Use the following way to verify:
 docker service create --replicas 1 -p 8080:80 --name web nginx
 ```
 Then on each host, make sure there is valid return of `curl 127.0.0.1:8080`.
-`Connection refused` error means the routing mesh of this Docker Swarm cluster needs to be fixed.
+`Connection refused` error means the routing mesh of this Docker Swarm cluster is broken and needs to be fixed.
