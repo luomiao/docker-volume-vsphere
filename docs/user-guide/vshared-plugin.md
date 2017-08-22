@@ -34,6 +34,13 @@ Detailed documentation can be found on our [GitHub Documentation Page](http://vm
 
 * Base docker volume plugin (e.g. [vSphere Docker Volume Service](https://github.com/vmware/docker-volume-vsphere))
 
+## Installing
+The recommended way to install vFile plugin is from docker cli:
+```
+docker plugin install --grant-all-permissions --alias vfile vmware/vfile:latest
+```
+Note: please make sure the base volume plugin is already installed!
+
 ## Usage examples
 
 #### Creating a persistent volume from vFile plugin
@@ -43,7 +50,7 @@ $ docker volume ls
 $ docker volume inspect SharedVol
 ```
 Options for creation will be the same for the base volume plugin.
-Please refer to the base volume plugin for proper options.
+Please refer to the base volume plugin for more options.
 Note: vFile volume plugin doesn't support filesystem type options.
 
 #### Mounting this volume to a container running on the first host
@@ -51,7 +58,7 @@ Note: vFile volume plugin doesn't support filesystem type options.
 # ssh to node1
 $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node1 busybox
 / # cd /mnt/myvol
-# write data into mounted vFile volume
+# read/write data into mounted vFile volume
 ```
 
 #### Mounting this volume to a container running on the second host
@@ -59,7 +66,7 @@ $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node1 busybox
 # ssh to node2
 $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node2 busybox
 / # cd /mnt/myvol
-# read data from mounted vFile volume
+# read/write data from mounted vFile volume
 ```
 
 #### Stopping the two containers on each host
@@ -72,13 +79,6 @@ $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node2 busybox
 ```
 $ docker volume rm SharedVol
 ```
-
-## Installing
-The recommended way to install vFile plugin is from docker cli:
-```
-docker plugin install --grant-all-permissions --alias vfile vmware/vfile:latest
-```
-Note: please make sure the base volume plugin is already installed!
 
 ## Configuration
 ### Options for vFile plugin
