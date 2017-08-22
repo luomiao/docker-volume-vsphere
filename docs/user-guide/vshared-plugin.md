@@ -1,5 +1,5 @@
 ---
-title: vShared volume plugin for Docker
+title: vFile volume plugin for Docker
 
 ---
 ## Overview
@@ -12,7 +12,7 @@ This can be solved through distributed file systems, such as NFS, Ceph, Gluster,
 However, setting up and maintaining those distributed file systems for docker persistent data usage is not a trivial work. 
 Furthermore, users can face more challenges in order to achieve high availability, scalability, and load balancing. 
 
-__vShared volume plugin for Docker__ provides simultanous persistent volume access between hosts in the
+__vFile volume plugin for Docker__ provides simultanous persistent volume access between hosts in the
 same Docker Swarm cluster for the base volume plugin service such as vDVS, with zero configuration effort,
 along with high availability, scalability, and load balancing support.
 
@@ -21,28 +21,37 @@ Detailed documentation can be found on our [GitHub Documentation Page](http://vm
 
 ## Prerequisites
 * Docker version 1.30/17.06.0 is required.
-* To use vShared plugin, hosts must be Docker Swarm mode.
+* To use vFile plugin, hosts must be running in Swarm mode.
+
 [How to create a swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/create-swarm/)
+
 [How to add nodes to the swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/add-nodes/)
+
+* Please follow the following [recommendations for the Swarm manager nodes setup](https://docs.docker.com/engine/swarm/how-swarm-mode-works/nodes/#manager-nodes):
+1. Run the swarm cluster with a single manager only for testing purpose.
+2. An `N` manager cluster will tolerate the loss of at most `(N-1)/2` managers.
+3. Docker recommends a maximum of seven manager nodes for a swarm.
+
 * Base docker volume plugin (e.g. [vSphere Docker Volume Service](https://github.com/vmware/docker-volume-vsphere))
 
 ## Usage examples
 
-#### Creating a persistent volume from vShared plugin
+#### Creating a persistent volume from vFile plugin
 ```
-$ docker volume create --driver=vshared --name=SharedVol -o size=10gb
+$ docker volume create --driver=vfile --name=SharedVol -o size=10gb
 $ docker volume ls
 $ docker volume inspect SharedVol
 ```
 Options for creation will be the same for the base volume plugin.
 Please refer to the base volume plugin for proper options.
+Note: vFile volume plugin doesn't support filesystem type options.
 
 #### Mounting this volume to a container running on the first host
 ```
 # ssh to node1
 $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node1 busybox
 / # cd /mnt/myvol
-# write data into mounted shared volume
+# write data into mounted vFile volume
 ```
 
 #### Mounting this volume to a container running on the second host
@@ -50,7 +59,7 @@ $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node1 busybox
 # ssh to node2
 $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node2 busybox
 / # cd /mnt/myvol
-# read data from mounted shared volume
+# read data from mounted vFile volume
 ```
 
 #### Stopping the two containers on each host
@@ -59,25 +68,26 @@ $ docker run --rm -it -v SharedVol:/mnt/myvol --name busybox-on-node2 busybox
 # docker stop busybox-on-node2
 ```
 
-#### Removing the vShared volume
+#### Removing the vFile volume
 ```
 $ docker volume rm SharedVol
 ```
 
 ## Installing
-The recommended way to install vShared plugin is from docker cli:
+The recommended way to install vFile plugin is from docker cli:
 ```
-docker plugin install --grant-all-permissions --alias vshared vmware/vsphere-shared:latest
+docker plugin install --grant-all-permissions --alias vfile vmware/vfile:latest
 ```
+Note: please make sure the base volume plugin is already installed!
 
 ## Configuration
-### Options for vShared plugin
-Users can choose the base volume plugin for vShared plugin, by setting configuration during install process.
+### Options for vFile plugin
+Users can choose the base volume plugin for vFile plugin, by setting configuration during install process.
 <!---
 * Through CLI flag can only be done through non-managed plugin.
 --->
 
-* Default config file location: `/etc/vsphere-shared.conf`.
+* Default config file location: `/etc/vfile.conf`.
 * Default base volume plugin: vSphere Docker Volume Service
 * Sample config file:
 ```
@@ -90,13 +100,13 @@ The user can override the default configuration by providing a different configu
 via the `--config` option, specifying the full path of the file.
 
 ### Options for logging
-* Default log location: `/var/log/vsphere-shared.log`.
+* Default log location: `/var/log/vfile.log`.
 * Logs retention, size for rotation and log location can be set in the config file too:
 ```
  {
 	"MaxLogAgeDays": 28,
 	"MaxLogSizeMb": 100,
-	"LogPath": "/var/log/vsphere-shared.log"
+	"LogPath": "/var/log/vfile.log"
 }
 ```
 
@@ -106,4 +116,14 @@ via the `--config` option, specifying the full path of the file.
 Please see README.md in the for the release by clicking on the tag for the release. Example: TBD.
 
 ### Can I use another base volume plugin other than vDVS?
-Currently vShared volume service is only developed and tested with vDVS as the base volume plugin.
+Currently vFile volume service is only developed and tested with vDVS as the base volume plugin.
+
+
+### I got "Operation now in progress" error when mounting a vFile volume to a container.
+Please make sure the routing mesh of Docker Swarm cluster is working properly.
+Use the following way to verify:
+```
+docker service create --replicas 1 -p 8080:80 --name web nginx
+```
+Then on each host, make sure there is valid return of `curl 127.0.0.1:8080`.
+`Connection refused` error means the routing mesh of this Docker Swarm cluster needs to be fixed.
