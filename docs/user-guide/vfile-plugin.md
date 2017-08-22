@@ -22,15 +22,12 @@ Detailed documentation can be found on our [GitHub Documentation Page](http://vm
 ## Prerequisites
 * Docker version 1.30/17.06.0 is required.
 * To use vFile plugin, hosts must be running in Swarm mode.
-
-[How to create a swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/create-swarm/)
-
-[How to add nodes to the swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/add-nodes/)
-
+    * [How to create a swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/create-swarm/)
+    * [How to add nodes to the swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/add-nodes/)
 * Please follow the following [recommendations for the Swarm manager nodes setup](https://docs.docker.com/engine/swarm/how-swarm-mode-works/nodes/#manager-nodes):
-1. Run the swarm cluster with a single manager only for testing purpose.
-2. An `N` manager cluster will tolerate the loss of at most `(N-1)/2` managers.
-3. Docker recommends a maximum of seven manager nodes for a swarm.
+    1. Run the swarm cluster with a single manager only for testing purpose.
+    2. An `N` manager cluster will tolerate the loss of at most `(N-1)/2` managers.
+    3. Docker recommends a maximum of seven manager nodes for a swarm.
 
 * Base docker volume plugin (e.g. [vSphere Docker Volume Service](https://github.com/vmware/docker-volume-vsphere))
 
