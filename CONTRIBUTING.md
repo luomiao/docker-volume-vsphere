@@ -338,6 +338,14 @@ DOCKER_HUB_REPO=vmware EXTRA_TAG= VERSION_TAG=<version_tag> make all
 
 Update documentation following steps listed below.
 
+
+## Cutting release steps for vFile plugin
+### Publish vFile managed plugin to Docker Store
+```
+DOCKER_HUB_REPO=vmware EXTRA_TAG= VERSION_TAG=latest make build-vfile
+DOCKER_HUB_REPO=vmware EXTRA_TAG= VERSION_TAG=<version_tag> make build-vfile
+```
+
 ## Documentation
 
 Documentation is published to [GitHub
