@@ -48,7 +48,7 @@ import (
                                before checking again
    gcTicker:                   ticker for garbage collector to run a collection
    etcdClientCreateError:      Error indicating failure to create etcd client
-   swarmErrorMsg:              Message indicating swarm cluster is unhealthy
+   swarmUnhealthyErrorMsg:     Message indicating swarm cluster is unhealthy
    etcdSingleRef:              if global refcount 0 -> 1, start SMB server
    etcdNoRef:                  if global refcount 1 -> 0, shut down SMB server
 */
@@ -65,7 +65,7 @@ const (
 	checkSleepDuration       = time.Second
 	gcTicker                 = 5 * time.Second
 	etcdClientCreateError    = "Failed to create etcd client"
-	swarmErrorMsg            = "Swarm cluster maybe unhealthy"
+	swarmUnhealthyErrorMsg   = "Swarm cluster maybe unhealthy"
 	etcdSingleRef            = "1"
 	etcdNoRef                = "0"
 )
@@ -786,7 +786,7 @@ func (e *EtcdKVS) WriteMetaData(entries []kvstore.KvPair) error {
 	if err != nil {
 		msg = fmt.Sprintf("Failed to write metadata: %v.", err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmErrorMsg)
+			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return errors.New(msg)
@@ -821,7 +821,7 @@ func (e *EtcdKVS) ReadMetaData(keys []string) ([]kvstore.KvPair, error) {
 	if err != nil {
 		msg := fmt.Sprintf("Transactional metadata read failed: %v.", err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmErrorMsg)
+			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return entries, errors.New(msg)
@@ -883,7 +883,7 @@ func (e *EtcdKVS) DeleteMetaData(name string) error {
 	if err != nil {
 		msg = fmt.Sprintf("Failed to delete metadata for volume %s: %v", name, err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmErrorMsg)
+			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return errors.New(msg)
