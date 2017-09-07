@@ -77,9 +77,13 @@ type EtcdKVS struct {
 	dockerOps *dockerops.DockerOps
 	nodeID    string
 	nodeAddr  string
+	// isManager indicates if current node is a manager or not
 	isManager bool
-	etcdCMD   *exec.Cmd
-	watcher   *etcdClient.Client
+	// etcdCMD records the cmd struct for ETCD process
+	// it's used for stopping ETCD process when node is demoted
+	etcdCMD *exec.Cmd
+	// watcher is used for killing the watch request when node is demoted
+	watcher *etcdClient.Client
 }
 
 // VFileVolConnectivityData - Contains metadata of vFile volumes
@@ -314,14 +318,11 @@ func (e *EtcdKVS) joinEtcdCluster() error {
 
 // leaveEtcdCluster function is called when a manager is demoted
 func (e *EtcdKVS) leaveEtcdCluster() error {
-	nodeAddr := e.nodeAddr
-	nodeID := e.nodeID
-
-	etcd, err := addrToEtcdClient(nodeAddr)
+	etcd, err := addrToEtcdClient(e.nodeAddr)
 	if err != nil {
 		log.WithFields(
-			log.Fields{"nodeAddr": nodeAddr,
-				"nodeID": nodeID},
+			log.Fields{"nodeAddr": e.nodeAddr,
+				"nodeID": e.nodeID},
 		).Error("Failed to create ETCD client from own address")
 		return err
 	}
@@ -333,18 +334,20 @@ func (e *EtcdKVS) leaveEtcdCluster() error {
 	cancel()
 	if err != nil {
 		log.WithFields(
-			log.Fields{"nodeAddr": nodeAddr,
+			log.Fields{"nodeAddr": e.nodeAddr,
 				"error": err},
 		).Error("Failed to list member for ETCD")
 		return err
 	}
 
-	peerAddr := etcdScheme + nodeAddr + etcdPeerPort
+	// create the peer URL for filtering ETCD member information
+	// each ETCD member has a unique peer URL
+	peerAddr := etcdScheme + e.nodeAddr + etcdPeerPort
 	for _, member := range lresp.Members {
 		// loop all current etcd members to find if there is already a member with the same peerAddr
 		if member.PeerURLs[0] == peerAddr {
 			log.WithFields(
-				log.Fields{"nodeID": nodeID,
+				log.Fields{"nodeID": e.nodeID,
 					"peerAddr": peerAddr},
 			).Info("Remove self from ETCD member due to demotion. ")
 
@@ -355,10 +358,15 @@ func (e *EtcdKVS) leaveEtcdCluster() error {
 				log.WithFields(
 					log.Fields{"peerAddr": peerAddr,
 						"member.ID": member.ID},
-				).Error("Failed to remove member for ETCD ")
+				).Error("Failed to remove this node from ETCD ")
 				return err
 			}
+
 			// the same peerAddr can only join at once. no need to continue.
+			log.WithFields(
+				log.Fields{"peerAddr": peerAddr,
+					"member.ID": member.ID},
+			).Info("Successfully removed self from ETCD ")
 			break
 		}
 	}
@@ -498,6 +506,7 @@ func (e *EtcdKVS) etcdRoleCheck() error {
 		}
 	} else {
 		if e.isManager {
+			// node is demoted from worker to manager, leave ETCD cluster
 			err = e.leaveEtcdCluster()
 			if err != nil {
 				log.WithFields(log.Fields{
