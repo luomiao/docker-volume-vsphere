@@ -64,6 +64,9 @@ endif
 build-vfile:
 	$(MAKE) --directory=client_plugin $@
 
+build-vfile:
+	$(MAKE) --directory=client_plugin $@
+
 # Forward to UI inside docker run
 dockerized-build-ui:
 ifeq ($(INCLUDE_UI), true)
