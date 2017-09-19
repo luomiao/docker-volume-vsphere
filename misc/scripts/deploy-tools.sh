@@ -143,7 +143,7 @@ function deploywindowsplugin {
 
 function managedPluginSanityCheck {
     $SCP $SCRIPTS/plugin_sanity_test.sh $TARGET:$BUILD_LOC
-    $SSH $TARGET 'sh '  $BUILD_LOC/plugin_sanity_test.sh
+    $SSH $TARGET 'sh '  $BUILD_LOC/plugin_sanity_test.sh $PLUGNAME
 }
 
 function setupVMType {
@@ -447,6 +447,7 @@ buildplugin)
         VERSION_TAG="$6"
         EXTRA_TAG="$7"
         PREFIX="$8"
+        PLUGNAME="$9"
         if [ -z "$PLUGIN_BIN" -o -z "$MANAGED_PLUGIN_SRC" -o -z "$SCRIPTS" ]
         then
             usage "Missing params: plugin/binary/script folder"
