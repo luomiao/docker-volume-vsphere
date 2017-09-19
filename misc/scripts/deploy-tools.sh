@@ -143,7 +143,7 @@ function deploywindowsplugin {
 
 function managedPluginSanityCheck {
     $SCP $SCRIPTS/plugin_sanity_test.sh $TARGET:$BUILD_LOC
-    $SSH $TARGET 'sh '  $BUILD_LOC/plugin_sanity_test.sh $PLUGNAME
+    $SSH $TARGET "sh $BUILD_LOC/plugin_sanity_test.sh \"$PLUGNAME\""
 }
 
 function setupVMType {
