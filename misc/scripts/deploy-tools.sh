@@ -92,7 +92,9 @@ function buildplugin {
 
         fi
         $SSH $TARGET "cd $PLUGIN_LOC ; DOCKER_HUB_REPO=$DOCKER_HUB_REPO VERSION_TAG=$VERSION_TAG EXTRA_TAG=$EXTRA_TAG make ${PREFIX}info ${PREFIX}clean ${PREFIX}plugin"
+        if [ -z ${PREFIX} ]; then
         managedPluginSanityCheck
+        fi
         $SSH $TARGET "cd $PLUGIN_LOC ; DOCKER_HUB_REPO=$DOCKER_HUB_REPO VERSION_TAG=$VERSION_TAG EXTRA_TAG=$EXTRA_TAG make ${PREFIX}push ${PREFIX}clean"
     done
 }
