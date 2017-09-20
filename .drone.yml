@@ -49,7 +49,6 @@ build:
       - go get github.com/golang/lint/golint
       - go get -u gopkg.in/check.v1
       - make -s build
-      - make -s build-vfile
       - echo $KEY | base64 -d > /drone/src/github.com/vmware/docker-volume-vsphere/key
       - chmod 0600 /drone/src/github.com/vmware/docker-volume-vsphere/key
     when: *branches

@@ -59,6 +59,7 @@ ifeq ($(INCLUDE_UI), true)
 	$(MAKE) --directory=ui $@
 endif
 	$(MAKE) --directory=client_plugin $@
+	$(MAKE) --directory=client_plugin build-vfile
 
 build-vfile:
 	$(MAKE) --directory=client_plugin $@
