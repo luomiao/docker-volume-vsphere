@@ -30,6 +30,7 @@
 . ../misc/scripts/commands.sh
 
 PLUGIN_NAME=docker-volume-vsphere
+VFILE_PLUGNAME=vfile
 VIB_NAME=esx-vmdkops-service
 TMP_LOC=/tmp/$PLUGIN_NAME
 VMDK_OPS_UNITTEST=/tmp/vmdk_ops_unit*
@@ -169,7 +170,12 @@ function setupVMType {
 
 function installManagedPlugin {
     log "installManagedPlugin: Installing vDVS plugin [$MANAGED_PLUGIN_NAME]"
-    $SSH $TARGET "docker plugin install --grant-all-permissions --alias $PLUGIN_ALIAS $MANAGED_PLUGIN_NAME"
+    if [ $PLUGIN_NAME == $VFILE_PLUGNAME ]
+    then
+        $SSH $TARGET "docker plugin install --grant-all-permissions --alias $PLUGIN_ALIAS $MANAGED_PLUGIN_NAME VFILE_TIMEOUT_IN_SECOND=90"
+    else
+        $SSH $TARGET "docker plugin install --grant-all-permissions --alias $PLUGIN_ALIAS $MANAGED_PLUGIN_NAME"
+    fi
 }
 
 function deployVMPost {
