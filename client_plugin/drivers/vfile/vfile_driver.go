@@ -595,12 +595,12 @@ func (d *VolumeDriver) mountVFileVolume(volName string, mountpoint string, volRe
 		log.Fields{"volume name": volName,
 			"arguments": mountArgs,
 		}).Info("Mounting volume with options ")
-	command := exec.Command("mount", mountArgs...)
 
 	// host can be slow which results in host unreachable error during mount
 	// retry the mounting before error out
 	mountRetry := 5
 	for mountRetry > 0 {
+		command := exec.Command("mount", mountArgs...)
 		output, err := command.CombinedOutput()
 		if err != nil {
 			mountRetry--
