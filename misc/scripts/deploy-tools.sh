@@ -172,7 +172,7 @@ function installManagedPlugin {
     if [ $PLUGIN_NAME == $VFILE_PLUGNAME ]
     then
         log "installManagedPlugin: Installing vfile plugin [$MANAGED_PLUGIN_NAME]"
-        $SSH $TARGET "docker plugin install --grant-all-permissions --alias $PLUGIN_ALIAS $MANAGED_PLUGIN_NAME VFILE_TIMEOUT_IN_SECOND=120"
+        $SSH $TARGET "docker plugin install --grant-all-permissions --alias $PLUGIN_ALIAS $MANAGED_PLUGIN_NAME VFILE_TIMEOUT_IN_SECOND=300"
     else
         log "installManagedPlugin: Installing vDVS plugin [$MANAGED_PLUGIN_NAME]"
         $SSH $TARGET "docker plugin install --grant-all-permissions --alias $PLUGIN_ALIAS $MANAGED_PLUGIN_NAME"
