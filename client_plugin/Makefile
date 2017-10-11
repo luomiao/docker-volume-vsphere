@@ -392,6 +392,15 @@ test-vm: checkremote deploy-vm-test
 		-v $(TEST_VOL_NAME) \
 		-H1 $(VM1_DOCKER) -H2 $(VM2_DOCKER)
 
+test-debug-vfile:
+	$(log_target)
+	$(BUILD) test-e2e-runalways
+	$(BUILD) test-e2e-runonce
+	$(BUILD) testasroot
+	$(BUILD) test-esx
+	$(BUILD) test-vm
+
+
 # test-esx is a quick unittest for ESX Python code.
 test-esx:
 	$(log_target)
@@ -432,19 +441,19 @@ test-e2e-vfile:
 .PHONY: test-e2e-runalways test-e2e-runonce test-e2e-runonce-windows
 test-e2e-runalways:
 	$(log_target)
-	$(GO) test -v -timeout 50m -tags "runalways" $(E2E_Tests)
+	$(GO) test -v -timeout 90m -tags "runalways" $(E2E_Tests)
 
 test-e2e-runonce:
 	$(log_target)
-	$(GO) test -v -timeout 60m -tags "runonce" $(E2E_Tests)
+	$(GO) test -v -timeout 90m -tags "runonce" $(E2E_Tests)
 
 test-e2e-runonce-windows:
 	$(log_target)
-	$(GO) test -v -timeout 50m -tags "runoncewin winutil" $(E2E_Tests)
+	$(GO) test -v -timeout 90m -tags "runoncewin winutil" $(E2E_Tests)
 
 test-e2e-runonce-vfile:
 	$(log_target)
-	$(GO) test -v -timeout 50m -tags "runoncevfile" $(E2E_Tests)
+	$(GO) test -v -timeout 90m -tags "runoncevfile" $(E2E_Tests)
 
 .PHONY:clean-vm clean-esx clean-all clean-docker
 clean-vm:
