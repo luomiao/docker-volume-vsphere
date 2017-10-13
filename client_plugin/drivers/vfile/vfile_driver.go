@@ -30,6 +30,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/go-plugins-helpers/volume"
@@ -56,6 +57,7 @@ const (
 	fsType               = "cifs"
 	initError            = "vFile volume driver is not fully initialized yet."
 	mountError           = "exit status 255"
+	checkTicker          = time.Second
 )
 
 /* VolumeDriver - vFile plugin volume driver struct
@@ -598,26 +600,34 @@ func (d *VolumeDriver) mountVFileVolume(volName string, mountpoint string, volRe
 
 	// host can be slow which results in host unreachable error during mount
 	// retry the mounting before error out
-	mountRetry := 5
-	for mountRetry > 0 {
-		command := exec.Command("mount", mountArgs...)
-		output, err := command.CombinedOutput()
-		if err != nil {
-			mountRetry--
-			log.WithFields(
-				log.Fields{"volume name": volName,
-					"output": string(output),
-					"error":  err,
-				}).Error("Mount failed: ")
-			if mountRetry == 0 || err.Error() != mountError {
-				return err
+	ticker := time.NewTicker(checkTicker)
+	defer ticker.Stop()
+	timer := time.NewTimer(dockerops.GetServiceStartTimeout())
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			command := exec.Command("mount", mountArgs...)
+			output, err := command.CombinedOutput()
+			if err != nil {
+				log.WithFields(
+					log.Fields{"volume name": volName,
+						"output": string(output),
+						"error":  err,
+					}).Error("Mount failed: ")
+				if err.Error() != mountError {
+					return err
+				}
+			} else {
+				return nil
 			}
-		} else {
-			mountRetry = 0
+		case <-timer.C:
+			msg := fmt.Sprintf("Failed to mount vFile volume %s after timeout", volName)
+			log.Errorf(msg)
+			return errors.New(msg)
 		}
 	}
-
-	return nil
 }
 
 // Unmount request from Docker. If mount refcount is drop to 0.
