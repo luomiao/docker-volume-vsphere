@@ -20,11 +20,13 @@
 package e2e
 
 import (
+	"log"
 	"strconv"
 
 	"github.com/vmware/docker-volume-vsphere/tests/utils/dockercli"
 	"github.com/vmware/docker-volume-vsphere/tests/utils/inputparams"
 	"github.com/vmware/docker-volume-vsphere/tests/utils/misc"
+	"github.com/vmware/docker-volume-vsphere/tests/utils/ssh"
 	"github.com/vmware/docker-volume-vsphere/tests/utils/verification"
 	. "gopkg.in/check.v1"
 )
@@ -69,10 +71,19 @@ var _ = Suite(&AdvancedVFileTestSuite{})
 func (s *AdvancedVFileTestSuite) TestVFileVolumeLifecycle(c *C) {
 	misc.LogTestStart(c.TestName())
 
+	out, err := dockercli.CreateService(s.master, "testnginx", "-p 8080:80 --replicas 1 nginx")
+	c.Assert(err, IsNil, Commentf(out))
+
+	status := verification.IsDockerServiceRunning(s.master, "testnginx", 1)
+	c.Assert(status, Equals, true, Commentf("Service %s is not running", "testnginx"))
+
+	out, err = ssh.InvokeCommand(s.worker1, "curl http://127.0.0.1:8080")
+	log.Println("curl of nginx output is %s", out)
+
 	data := []string{"QWERTYUIOP000000000000",
 		"ASDFGHJKLL111111111111"}
 	// Create vFile volume
-	out, err := dockercli.CreateVFileVolume(s.worker1, s.volName1)
+	out, err = dockercli.CreateVFileVolume(s.worker1, s.volName1)
 	c.Assert(err, IsNil, Commentf(out))
 
 	// Check if the vFile volume got created properly
