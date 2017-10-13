@@ -108,7 +108,8 @@ runtests)
           TARGET+=" test-e2e-runalways test-vm"
         else
           touch /tmp/$ESX
-          TARGET+=" deploy-vm test-e2e-runalways test-e2e-runonce testasroot test-esx test-vm"
+#          TARGET+=" deploy-vm test-e2e-runalways test-e2e-runonce testasroot test-esx test-vm"
+          TARGET+=" deploy-vm"
         fi
         ;;
 coverage)
