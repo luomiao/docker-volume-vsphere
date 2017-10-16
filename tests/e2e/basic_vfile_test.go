@@ -83,17 +83,11 @@ func (s *BasicVFileTestSuite) TestVolumeLifecycle(c *C) {
 	for _, host := range s.config.DockerHosts {
 		out, err := dockercli.CreateVFileVolume(host, s.volName1)
 		c.Assert(err, IsNil, Commentf(out))
-		out1, err1 := dockercli.InspectVolume(host, s.volName1)
-		log.Println("InspectVolume return out[%s] for volume %s, error[%s]", out1, s.volName1, err1)
 
 		accessible := verification.CheckVolumeAvailability(host, s.volName1)
 		c.Assert(accessible, Equals, true, Commentf("Volume %s is not available", s.volName1))
-		out1, err1 = dockercli.InspectVolume(host, s.volName1)
-		log.Println("InspectVolume return out[%s] for volume %s, error[%s]", out1, s.volName1, err1)
 
 		out, err = dockercli.AttachVFileVolume(host, s.volName1, s.containerName)
-		out1, err1 = dockercli.InspectVolume(host, s.volName1)
-		log.Println("InspectVolume return out[%s] for volume %s, error[%s]", out1, s.volName1, err1)
 		c.Assert(err, IsNil, Commentf(out))
 
 		// Expect global refcount for this volume to be 1
