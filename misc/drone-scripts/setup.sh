@@ -14,7 +14,7 @@
 # limitations under the License.
 
 echo "Resetting testbed"
-govc snapshot.revert -vm $ESX_6_5 init
+govc snapshot.revert -vm $ESX_6_5 init-testing
 govc snapshot.revert -vm $ESX_6_0 init
 
 echo "Waiting for revert to complete";

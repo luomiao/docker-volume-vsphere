@@ -107,8 +107,8 @@ build:
       - echo "=> Building and pushing vDVS managed plugin" `date` > /dev/null
       - #
       - export GOVC_URL=$GOVC_URL_6_5
-      - export VM1=`$GOVC_GET_IP photon.vmfs`
-      - export VM2=`$GOVC_GET_IP Ubuntu.16.10`
+      - export VM1=`$GOVC_GET_IP Ubuntu.16.10`
+      - export VM2=`$GOVC_GET_IP photon.vmfs`
       - #
       - export MANAGER1=$VM1
       - export WORKER1=$VM2
