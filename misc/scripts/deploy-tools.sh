@@ -295,6 +295,15 @@ function cleanvm {
     done
 }
 
+function cleanvfile {
+    set +e
+    for IP in $IP_LIST
+    do
+        TARGET=root@$IP
+        cleanupVFile
+    done
+}
+
 function cleanupVMPre {
     case $FILE_EXT in
     deb)
@@ -349,6 +358,10 @@ function cleanupVM {
         fi
         ;;
     esac
+    $SSH $TARGET "docker plugin rm $MANAGED_PLUGIN_NAME -f > /dev/null 2>&1"
+}
+
+function cleanupVFile {
     $SSH $TARGET "docker plugin rm $MANAGED_PLUGIN_NAME -f > /dev/null 2>&1"
 }
 
@@ -447,6 +460,14 @@ cleanvm)
             usage "Missing params: managed_plugin_name"
         fi
         cleanvm
+        ;;
+cleanvfile)
+        MANAGED_PLUGIN_NAME="$2"
+        if [ -z "$MANAGED_PLUGIN_NAME" ]
+        then
+            usage "Missing params: managed_plugin_name"
+        fi
+        cleanvfile
         ;;
 buildplugin)
         PLUGIN_BIN="$2"

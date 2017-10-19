@@ -310,6 +310,7 @@ DEPLOY_ESX_SH := $(DEPLOY_TOOLS) deployesx
 DEPLOY_ESX_FOR_UPGRADE := $(DEPLOY_TOOLS) deployesxForUpgrade
 CLEANVM_SH    := $(DEPLOY_TOOLS) cleanvm
 CLEANESX_SH   := $(DEPLOY_TOOLS) cleanesx
+CLEANVFILE_SH    := $(DEPLOY_TOOLS) cleanvfile
 
 
 #
@@ -345,7 +346,7 @@ deploy-windows-plugin:
 build-vfile-plugin:
 	$(BUILD_PLUGIN_SH) "$(VM2)" $(VFILE_PLUGIN_BIN) $(MANAGED_PLUGIN_LOC) $(SCRIPTS) $(DOCKER_HUB_REPO) $(VERSION_TAG) $(EXTRA_TAG) $(VFILE_PLUGNAME) $(VFILE_PREFIX)
 deploy-vfile-plugin:
-	$(DEPLOY_VM_SH) "$(VMS)" $(VFILE_PLUGIN_NAME):$(PLUGIN_TAG) $(VFILE_PLUGIN_ALIAS) $(VFILE_PLUGNAME)
+	$(DEPLOY_VM_SH) "$(VM1) $(VM2)" $(VFILE_PLUGIN_NAME):$(PLUGIN_TAG) $(VFILE_PLUGIN_ALIAS) $(VFILE_PLUGNAME)
 
 
 deploy-all: deploy-esx deploy-vm deploy-vm-test
@@ -391,15 +392,6 @@ test-vm: checkremote deploy-vm-test
 	$(SSH) $(TEST_VM) $(TMP_LOC)/$(PLUGNAME).test $(TEST_VERBOSE) \
 		-v $(TEST_VOL_NAME) \
 		-H1 $(VM1_DOCKER) -H2 $(VM2_DOCKER)
-
-test-debug-vfile:
-	$(log_target)
-	$(BUILD) test-e2e-runalways
-	$(BUILD) test-e2e-runonce
-	$(BUILD) testasroot
-	$(BUILD) test-esx
-	$(BUILD) test-vm
-
 
 # test-esx is a quick unittest for ESX Python code.
 test-esx:
@@ -458,6 +450,9 @@ test-e2e-runonce-vfile:
 .PHONY:clean-vm clean-esx clean-all clean-docker
 clean-vm:
 	$(CLEANVM_SH) "$(VMS)" "$(MANAGED_PLUGIN_NAME)"
+
+clean-vfile:
+	$(CLEANVFILE_SH) "$(VMS)" "$(VFILE_MANAGED_PLUGIN_NAME)"
 
 clean-esx:
 	$(CLEANESX_SH) "$(ESX)" esx-vmdkops-service
