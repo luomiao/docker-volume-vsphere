@@ -102,16 +102,13 @@ case $FUNCTION_NAME in
 pluginSanityCheck)
         TARGET+=" build-plugin"
         ;;
-deployonvms)
-        TARGET+=" deploy-vm"
-        ;;
 runtests)
         if [ -e /tmp/$ESX ]
         then
           TARGET+=" test-e2e-runalways test-vm"
         else
           touch /tmp/$ESX
-          TARGET+=" test-e2e-runalways test-e2e-runonce testasroot test-esx test-vm"
+          TARGET+=" deploy-vm test-e2e-runalways test-e2e-runonce testasroot test-esx test-vm"
         fi
         ;;
 coverage)
