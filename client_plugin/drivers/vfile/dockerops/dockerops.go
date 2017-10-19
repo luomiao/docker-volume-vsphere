@@ -351,12 +351,12 @@ func (d *DockerOps) isFileServiceRunning(servID string, volName string) (uint32,
 		log.Infof("tasks state is %s", task.Status.State)
 	}
 	for _, task := range tasks {
-		if task.Status.State != swarm.TaskStateRunning {
+		if task.Status.State == swarm.TaskStateRunning {
 			log.Infof("File server not running for volume %s", volName)
-			return port, false
+			return port, true
 		}
 	}
-	return port, true
+	return port, false
 }
 
 // getServiceIDAndPort - return the file service ID and port for given volume
