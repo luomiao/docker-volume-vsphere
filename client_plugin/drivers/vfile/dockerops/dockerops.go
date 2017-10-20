@@ -279,7 +279,6 @@ func (d *DockerOps) StartSMBServer(volName string) (int, string, bool) {
 		return 0, "", false
 	}
 
-	log.Errorf("After create SMB service, ID: %s, volName: %s", resp.ID, volName)
 	// Wait till service container starts
 	ticker := time.NewTicker(checkTicker)
 	defer ticker.Stop()
@@ -348,14 +347,11 @@ func (d *DockerOps) isFileServiceRunning(servID string, volName string) (uint32,
 		return port, false
 	}
 	for _, task := range tasks {
-		log.Infof("tasks state is %s", task.Status.State)
-	}
-	for _, task := range tasks {
 		if task.Status.State == swarm.TaskStateRunning {
-			log.Infof("File server not running for volume %s", volName)
 			return port, true
 		}
 	}
+	log.Infof("File server not running for volume %s", volName)
 	return port, false
 }
 
