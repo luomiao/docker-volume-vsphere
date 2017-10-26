@@ -66,7 +66,7 @@ const (
 	etcdRequestTimeout       = 2 * time.Second
 	etcdUpdateTimeout        = 10 * time.Second
 	checkSleepDuration       = time.Second
-	gcTicker                 = 30 * time.Second
+	gcTicker                 = 15 * time.Second
 	etcdClientCreateError    = "Failed to create etcd client"
 	swarmUnhealthyErrorMsg   = "Swarm cluster maybe unhealthy"
 	etcdSingleRef            = "1"
@@ -429,6 +429,7 @@ func (e *EtcdKVS) checkLocalEtcd() error {
 						"error": err},
 				).Warningf("Failed to get ETCD client, retry before timeout ")
 			} else {
+				log.Infof("Local ETCD client is up successfully, start watcher")
 				e.watcher = cli
 				go e.etcdWatcher(cli)
 				return nil
@@ -493,7 +494,7 @@ func (e *EtcdKVS) etcdRoleCheck() error {
 
 	if isManager {
 		if !e.isManager {
-			// as a new manager, join ETCD cluster
+			log.Infof("Node is promoted to manager, prepare to join ETCD cluster")
 			err = e.joinEtcdCluster()
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -506,7 +507,7 @@ func (e *EtcdKVS) etcdRoleCheck() error {
 		}
 	} else {
 		if e.isManager {
-			// node is demoted from worker to manager, leave ETCD cluster
+			log.Infof("Node is demoted from manager to worker, prepare to leave ETCD cluster")
 			err = e.leaveEtcdCluster()
 			if err != nil {
 				log.WithFields(log.Fields{
