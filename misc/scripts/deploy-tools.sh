@@ -92,7 +92,6 @@ function buildplugin {
             esac
 
         fi
-        log "Before make plugin with prefix ${PREFIX} ..."
         $SSH $TARGET "cd $PLUGIN_LOC ; DOCKER_HUB_REPO=$DOCKER_HUB_REPO VERSION_TAG=$VERSION_TAG EXTRA_TAG=$EXTRA_TAG make ${PREFIX}info ${PREFIX}clean ${PREFIX}plugin"
         if [ -z ${PREFIX} ]; then
         managedPluginSanityCheck

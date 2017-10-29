@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // This test suite includes test cases to verify basic functionality
-// before upgrade for upgrade test
+// before and after swarm node demote/promote operation
 
 // +build runoncevfile
 
