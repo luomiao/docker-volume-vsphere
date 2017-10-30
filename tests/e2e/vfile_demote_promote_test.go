@@ -167,6 +167,7 @@ func (s *VFileDemotePromoteTestSuite) TestSwarmRoleChange(c *C) {
 	out, err = dockercli.DeleteVolume(s.worker1, s.volName2)
 	c.Assert(err, IsNil, Commentf(out))
 
+	log.Println("Finished swarm promote/demote test for vFile, start to reset the testbed swarm roles...")
 	err = dockercli.PromoteNode(s.worker1, s.master)
 	c.Assert(err, IsNil, Commentf("Failed to reset manager role for %s ", s.master))
 
