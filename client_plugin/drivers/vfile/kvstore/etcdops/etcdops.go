@@ -195,7 +195,7 @@ func (e *EtcdKVS) startEtcdCluster() error {
 func (e *EtcdKVS) joinEtcdCluster() error {
 	nodeAddr := e.nodeAddr
 	nodeID := e.nodeID
-	log.Infof("joinEtcdCluster on node with nodeID %s and nodeAddr %s leaderAddr %s", nodeID, nodeAddr, leaderAddr)
+	log.Infof("joinEtcdCluster on node with nodeID %s and nodeAddr %s", nodeID, nodeAddr)
 
 	leaderAddr, err := e.dockerOps.GetSwarmLeader()
 	if err != nil {
