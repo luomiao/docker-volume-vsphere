@@ -130,6 +130,8 @@ func NewKvStore(dockerOps *dockerops.DockerOps) *EtcdKVS {
 			log.Errorf("failed to stat ETCD data-dir: %v", err)
 			return nil
 		}
+		// when error is IsNotExist, ETCD data-dir is not existing,
+		// need to continue to create/join a new ETCD cluster
 	} else {
 		// ETCD data-dir already exists, just re-join
 		err = e.rejoinEtcdCluster()
@@ -198,7 +200,7 @@ func (e *EtcdKVS) rejoinEtcdCluster() error {
 	}
 
 	// start the routine to create an etcd cluster
-	err := etcdService(lines)
+	err := e.etcdStartService(lines)
 	if err != nil {
 		log.Errorf("Failed to start ETCD for rejoinEtcdCluster")
 		return err
@@ -214,7 +216,7 @@ func (e *EtcdKVS) startEtcdCluster() error {
 	nodeAddr := e.nodeAddr
 	log.Infof("startEtcdCluster on node with nodeID %s and nodeAddr %s", nodeID, nodeAddr)
 
-	// create ETCD data directory
+	// create ETCD data directory with 755 permission since only root needs full permission
 	err := os.Mkdir(etcdDataDir, 0755)
 	if err != nil {
 		log.Errorf("Failed to create directory etcd-data: err %v", err)
