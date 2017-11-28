@@ -52,7 +52,7 @@ import (
                                before checking again
    gcTicker:                   ticker for garbage collector to run a collection
    etcdClientCreateError:      Error indicating failure to create etcd client
-   swarmUnhealthyErrorMsg:     Message indicating swarm cluster is unhealthy
+   etcdUnhealthyErrorMsg:      Message indicating etcd is unhealthy
    etcdNoRef:                  global refcount = 0, no dependency on this volume
    etcdLockTicker:             ticker for blocking wait a ETCD lock
    etcdLockTimer:              timeout for blocking wait a ETCD lock
@@ -72,11 +72,12 @@ const (
 	checkSleepDuration       = time.Second
 	gcTicker                 = 15 * time.Second
 	etcdClientCreateError    = "Failed to create etcd client"
-	swarmUnhealthyErrorMsg   = "Swarm cluster maybe unhealthy"
+	etcdUnhealthyErrorMsg    = "ETCD maybe unhealthy"
 	etcdNoRef                = "0"
 	etcdLockTicker           = 1 * time.Second
 	etcdLockTimer            = 20 * time.Second
 	etcdLockTimeoutErrMsg    = "ETCD Lock blocking wait timeout"
+	etcdLockLeaseTime        = 20
 )
 
 type EtcdKVS struct {
@@ -682,7 +683,7 @@ func (e *EtcdKVS) cleanOrphanService(volumesToVerify []string) {
 func (e *EtcdKVS) etcdStartEventHandler(ev *etcdClient.Event) {
 	log.WithFields(
 		log.Fields{"type": ev.Type},
-	).Debug("Watcher on start trigger returns event ")
+	).Info("Watcher on start trigger returns event ")
 
 	// monitor PUT requests on start triggers, excluding the PUT for creation
 	if ev.Type == etcdClient.EventTypePut && ev.PrevKv != nil {
@@ -693,6 +694,7 @@ func (e *EtcdKVS) etcdStartEventHandler(ev *etcdClient.Event) {
 		// the new value of start trigger
 		success, err := e.CompareAndPutIfNotEqual(kvstore.VolPrefixStartMarker+volName, string(ev.Kv.Value))
 		if err != nil || success == false {
+			// watchers failed to update the marker just return
 			return
 		}
 
@@ -762,7 +764,7 @@ func (e *EtcdKVS) etcdStartEventHandler(ev *etcdClient.Event) {
 func (e *EtcdKVS) etcdStopEventHandler(ev *etcdClient.Event) {
 	log.WithFields(
 		log.Fields{"type": ev.Type},
-	).Debug("Watcher on stop trigger returns event ")
+	).Info("Watcher on stop trigger returns event ")
 
 	// monitor PUT requests on stop triggers, excluding the PUT for creation
 	if ev.Type == etcdClient.EventTypePut && ev.PrevKv != nil {
@@ -773,6 +775,7 @@ func (e *EtcdKVS) etcdStopEventHandler(ev *etcdClient.Event) {
 		// the new value of stop trigger
 		success, err := e.CompareAndPutIfNotEqual(kvstore.VolPrefixStopMarker+volName, string(ev.Kv.Value))
 		if err != nil || success == false {
+			// watchers failed to update the marker just return
 			return
 		}
 
@@ -906,7 +909,7 @@ func (e *EtcdKVS) CreateLock(name string) (kvstore.KvLock, error) {
 
 // TryLock: try to get a ETCD mutex lock
 func (e *EtcdLock) TryLock() error {
-	session, err := concurrency.NewSession(e.lockCli, concurrency.WithTTL(20))
+	session, err := concurrency.NewSession(e.lockCli, concurrency.WithTTL(etcdLockLeaseTime))
 	if err != nil {
 		log.Errorf("Failed to create session before blocking wait lock of %s", e.Key)
 		return err
@@ -929,7 +932,7 @@ func (e *EtcdLock) TryLock() error {
 func (e *EtcdLock) BlockingLockWithLease() error {
 	log.Debugf("BlockingLockWithLease: key=%s", e.Key)
 
-	session, err := concurrency.NewSession(e.lockCli, concurrency.WithTTL(20))
+	session, err := concurrency.NewSession(e.lockCli, concurrency.WithTTL(etcdLockLeaseTime))
 	if err != nil {
 		log.Errorf("Failed to create session before blocking wait lock of %s", e.Key)
 		return err
@@ -1263,7 +1266,7 @@ func (e *EtcdKVS) WriteMetaData(entries []kvstore.KvPair) error {
 	if err != nil {
 		msg = fmt.Sprintf("Failed to write metadata: %v.", err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
+			msg += fmt.Sprintf(etcdUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return errors.New(msg)
@@ -1310,7 +1313,7 @@ func (e *EtcdKVS) UpdateMetaData(entries []kvstore.KvPair) ([]kvstore.KvPair, er
 	if err != nil {
 		msg := fmt.Sprintf("Transactional metadata update failed: %v.", err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
+			msg += fmt.Sprintf(etcdUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return nil, errors.New(msg)
@@ -1364,7 +1367,7 @@ func (e *EtcdKVS) ReadMetaData(keys []string) ([]kvstore.KvPair, error) {
 	if err != nil {
 		msg := fmt.Sprintf("Transactional metadata read failed: %v.", err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
+			msg += fmt.Sprintf(etcdUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return entries, errors.New(msg)
@@ -1433,7 +1436,7 @@ func (e *EtcdKVS) DeleteMetaData(name string) error {
 	if err != nil {
 		msg = fmt.Sprintf("Failed to delete metadata for volume %s: %v", name, err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
+			msg += fmt.Sprintf(etcdUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return errors.New(msg)
@@ -1468,7 +1471,7 @@ func (e *EtcdKVS) DeleteClientMetaData(name string, nodeID string) error {
 	if err != nil {
 		msg = fmt.Sprintf("Failed to delete client metadata for volume %s on node %s: %v", name, nodeID, err)
 		if err == context.DeadlineExceeded {
-			msg += fmt.Sprintf(swarmUnhealthyErrorMsg)
+			msg += fmt.Sprintf(etcdUnhealthyErrorMsg)
 		}
 		log.Warningf(msg)
 		return errors.New(msg)

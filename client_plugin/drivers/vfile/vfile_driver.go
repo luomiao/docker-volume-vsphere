@@ -618,6 +618,20 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 		return "", err
 	}
 
+	keys := []string{
+		kvstore.VolPrefixGRef + name,
+	}
+
+	// Read the current global refcount
+	entries, err := d.kvStore.ReadMetaData(keys)
+	if err != nil {
+		log.Errorf("Failed to read metadata for volume %s from KV store. %v", name, err)
+		lock.ReleaseLock()
+		return "", err
+	}
+
+	gref, _ := strconv.Atoi(entries[0].Value)
+
 	nodeID, addr, _, err := d.dockerOps.GetSwarmInfo()
 	if err != nil {
 		log.WithFields(
@@ -628,8 +642,7 @@ func (d *VolumeDriver) MountVolume(name string, fstype string, id string, isRead
 		return "", err
 	}
 
-	var entries []kvstore.KvPair
-	entries = append(entries, kvstore.KvPair{Key: kvstore.VolPrefixGRef + name, Value: strconv.Itoa(volRecord.GlobalRefcount + 1)})
+	entries[0].Value = strconv.Itoa(gref + 1)
 	entries = append(entries, kvstore.KvPair{Key: kvstore.VolPrefixClient + name + "_" + nodeID, Value: addr})
 	err = d.kvStore.WriteMetaData(entries)
 	if err != nil {
